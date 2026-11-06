@@ -48,6 +48,12 @@ AOSP17 NFC Mainline `packages/modules/Nfc` and `com.android.nfcservices` have th
 4. Validate exact NFCC firmware and RF settings only through manufacturer-supported setup. No eSE factory reset, firmware flash or JCOP/LS update without a justified and safe procedure.
 5. Perform AOSP17 Soong/APEX build, VINTF/FCM, SELinux neverallow, NFC CTS/VTS and real NFC read/write, HCE/card routing, SE/OMAPI, sleep/resume, reboots, recovery and power/latency measurements before any functional or support claim.
 
+## CI verification completed — source only
+
+[GitHub Actions run #42312284312](https://github.com/PixelExperience-Reborn/vendor_nxp_opensource_pn5xx_hidlimpl/actions/runs/42312284312) **SUCCESS**: exact 2020 PN5xx HIDL service source and separately pinned 2021 PN5xx HAL/stack, official AOSP17 NXP HAL, NXP17 17.07.00 AIDL V2/vendor AIDL V1 comparison, strict NFC source-ownership validation and **31/31 manifest regression tests PASS** across the original 25 staged profiles. The checker additionally asserted the eSE reset parameter difference and old HIDL factory-reset divergence.
+
+This run is **not** proof of a working NFC HAL on mondrian. No Soong/APEX build, VINTF/SELinux device assembly, vendor firmware validation, NFC CTS/VTS, eSE/UICC or actual hardware testing was performed.
+
 ## Work scope
 
 Audit-only branch: pinned historical/official/vendor source comparison; source gate and GitHub Actions; active PE-Reborn manifest rejects the archived HIDL checkout/name and tests old HAL owner replacement. `default.xml`, kernel, vendor firmware, device/product trees and original `seventeen` are **unchanged**. Full Android17 builds, actual HAL/SE operation and mondrian hardware results remain **OPEN**.
