@@ -1,0 +1,79 @@
+name: AOSP17 PN5xx HIDL service vs AIDL source boundary
+
+on:
+  push:
+    branches:
+      - audit/a17-pn5xx-hidlimpl-service-20261107
+    paths:
+      - 'docs/ANDROID_17_PN5XX_HIDL_SERVICE_AUDIT.md'
+      - 'audit/check_pn5xx_hidl_service_boundary.py'
+      - '.github/workflows/a17-pn5xx-hidl-service-boundary.yml'
+  pull_request:
+    paths:
+      - 'docs/ANDROID_17_PN5XX_HIDL_SERVICE_AUDIT.md'
+      - 'audit/check_pn5xx_hidl_service_boundary.py'
+      - '.github/workflows/a17-pn5xx-hidl-service-boundary.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  pinned-service-and-ownership:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout isolated audit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Fetch original legacy PN5xx HIDL wrappers
+        run: |
+          git fetch -q --no-tags --depth=1 origin \
+            +refs/heads/seventeen:refs/remotes/origin/seventeen
+      - name: Fetch actual dependent 2021 PN5xx HIDL HAL stack
+        run: |
+          git init -q "$RUNNER_TEMP/old-pn5xx-halimpl"
+          git -C "$RUNNER_TEMP/old-pn5xx-halimpl" remote add origin \
+            https://github.com/PixelExperience-Reborn/vendor_nxp_opensource_pn5xx_halimpl.git
+          git -C "$RUNNER_TEMP/old-pn5xx-halimpl" fetch -q --no-tags \
+            --filter=blob:none --depth=1 origin \
+            +refs/heads/seventeen:refs/remotes/origin/seventeen
+      - name: Fetch official AOSP17 hardware NXP NFC service
+        run: |
+          git init -q "$RUNNER_TEMP/aosp17-nxp"
+          git -C "$RUNNER_TEMP/aosp17-nxp" remote add origin \
+            https://android.googlesource.com/platform/hardware/nxp/nfc
+          git -C "$RUNNER_TEMP/aosp17-nxp" fetch -q --no-tags \
+            --filter=blob:none --depth=1 origin \
+            refs/tags/android-17.0.0_r1:refs/tags/android-17.0.0_r1
+      - name: Fetch NXP Android17 17.07.00 newer NFC AIDL
+        run: |
+          git init -q "$RUNNER_TEMP/nxp17"
+          git -C "$RUNNER_TEMP/nxp17" remote add origin \
+            https://github.com/NXPNFCProject/nfcandroid_nfc_hidlimpl.git
+          git -C "$RUNNER_TEMP/nxp17" fetch -q --no-tags \
+            --filter=blob:none --depth=1 origin \
+            +refs/heads/br_ar_17_aosp_mainline:refs/remotes/origin/br_ar_17_aosp_mainline
+      - name: Checkout PE-Reborn staged AOSP17 manifest
+        run: |
+          git clone -q --depth=1 \
+            --branch port/a17-aosp17-manifest-20261102 \
+            https://github.com/PixelExperience-Reborn/manifest.git \
+            "$RUNNER_TEMP/manifest"
+      - name: Pin service variants, dependency, modern HAL and manifest guard
+        run: |
+          python3 audit/check_pn5xx_hidl_service_boundary.py \
+            "$GITHUB_WORKSPACE" "$RUNNER_TEMP/old-pn5xx-halimpl" \
+            "$RUNNER_TEMP/aosp17-nxp" "$RUNNER_TEMP/nxp17" \
+            "$RUNNER_TEMP/manifest"
+      - name: Run active manifest positive/negative regression suite
+        run: |
+          cd "$RUNNER_TEMP/manifest"
+          python3 -m unittest discover -s tools \
+            -p test_aosp17_manifest_entrypoint.py -v
+      - name: State limits
+        run: |
+          echo "PASS: immutable old/official/current source contracts and manifest."
+          echo "NOT TESTED: Android17 Soong/APEX, VINTF/SEPolicy, NFC firmware,"
+          echo "eSE/UICC, hardware service, CTS/VTS or physical mondrian."
